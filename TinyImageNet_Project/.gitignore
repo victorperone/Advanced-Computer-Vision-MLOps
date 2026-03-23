@@ -22,10 +22,10 @@ checkpoints/
 
 
 # --- Logs and Experiment Outputs ---
-logs/
+logs/tensorboard/
 runs/
 *.log
-*.csv
+
 
 # TensorBoard
 events.out.tfevents*
