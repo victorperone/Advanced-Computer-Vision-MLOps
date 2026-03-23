@@ -1,0 +1,78 @@
+# config.yaml
+
+dataset:
+  img_size: 64
+  num_classes: 200
+  train_dir: "data/tiny-imagenet-200/train"
+  val_dir: "data/tiny-imagenet-200/val"
+
+# ==========================================
+# 💻 LAPTOP PROFILE (Fast Compilation & Debugging)
+# ==========================================
+laptop:
+  model_type: "vit"        # Change this to test different models
+  pretrained: false
+  use_gpu: false
+  cache_dataset: false
+  
+  # --- Training Params ---
+  batch_size: 16
+  epochs: 1
+  patience: 2
+  learning_rate: 0.001
+  max_lr: 0.003
+  weight_decay: 1e-4       
+  label_smoothing: 0.1     
+
+  # --- Dynamic Architecture Blueprints (Micro-Models) ---
+  vit_kwargs:
+    patch_size: 8
+    projection_dim: 32       # Tiny embedding vector
+    num_heads: 4             # Fewer attention heads for CPU
+    transformer_layers: 2    # Very shallow network
+    dropout_rate: 0.2
+
+  resnet_kwargs:
+    base_filters: 32         # Half the standard filters
+
+  efficientnet_kwargs:
+    dropout_rate: 0.2
+
+  convnext_kwargs:
+    dropout_rate: 0.2
+
+# ==========================================
+# 🚀 DESKTOP PROFILE (Full GPU Training)
+# ==========================================
+desktop:
+  model_type: "vit"
+  pretrained: true
+  use_gpu: true
+  cache_dataset: true
+  
+  # --- Training Params ---
+  batch_size: 128
+  epochs: 150
+  patience: 10
+  learning_rate: 0.0005
+  max_lr: 0.005
+  weight_decay: 1e-4      
+  label_smoothing: 0.1    
+
+  # --- Dynamic Architecture Blueprints (Mega-Models) ---
+  vit_kwargs:
+    patch_size: 8
+    projection_dim: 128      # Massive embedding vector to capture complex features
+    num_heads: 12            # Huge multi-head attention capacity
+    transformer_layers: 8    # Deep transformer stack
+    dropout_rate: 0.4        # Heavy dropout to prevent overfitting on deep layers
+
+  resnet_kwargs:
+    base_filters: 64         # Standard/Deep ResNet configuration
+
+  efficientnet_kwargs:
+    dropout_rate: 0.4
+
+  convnext_kwargs:
+    dropout_rate: 0.4
+

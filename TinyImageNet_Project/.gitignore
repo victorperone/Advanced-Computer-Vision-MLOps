@@ -1,0 +1,27 @@
+# --- Data and Large Files ---
+data/
+models/*.h5
+models/*.pth
+models/*.keras
+models/*.pb
+*.zip
+*.tar.gz
+
+# --- Python and Environments ---
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+.env
+*.pyc
+
+# --- OS and IDE specific ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# --- Notebooks ---
+.ipynb_checkpoints/
