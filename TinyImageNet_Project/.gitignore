@@ -4,8 +4,34 @@ models/*.h5
 models/*.pth
 models/*.keras
 models/*.pb
+datasets/
 *.zip
 *.tar.gz
+*.gz
+*.bz2
+
+# ---Model Weights / Checkpoints ---
+models/
+checkpoints/
+*.h5
+*.pth
+*.pt
+*.ckpt
+*.keras
+*.pb
+
+
+# --- Logs and Experiment Outputs ---
+logs/
+runs/
+*.log
+*.csv
+
+# TensorBoard
+events.out.tfevents*
+
+# Optuna
+*.db
 
 # --- Python and Environments ---
 __pycache__/
@@ -14,6 +40,7 @@ __pycache__/
 .venv/
 venv/
 env/
+ENV/
 .env
 *.pyc
 
@@ -25,3 +52,9 @@ Thumbs.db
 
 # --- Notebooks ---
 .ipynb_checkpoints/
+notebooks/iframe_figures/
+
+# --- Misc ---
+*.swp
+*.tmp
+*.bak
