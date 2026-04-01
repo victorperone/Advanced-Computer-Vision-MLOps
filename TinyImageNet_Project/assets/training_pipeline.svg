@@ -1,0 +1,121 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 560" width="100%" height="560">
+
+<style>
+  .step   { fill:#E3F2FD; stroke:#1565C0; stroke-width:1.5 }
+  .aug    { fill:#E8F5E9; stroke:#2E7D32; stroke-width:1.5 }
+  .cache  { fill:#FFF8E1; stroke:#F57F17; stroke-width:1.5 }
+  .gpu    { fill:#FCE4EC; stroke:#880E4F; stroke-width:1.5 }
+  .cb     { fill:#EDE7F6; stroke:#4527A0; stroke-width:1 }
+  .arrow  { stroke:#455A64; stroke-width:1.8; marker-end:url(#arr) }
+  .warn   { fill:#FFF3E0; stroke:#E65100; stroke-width:1; stroke-dasharray:5 3 }
+  .lbl    { font-family:Arial,sans-serif; font-size:13px; font-weight:700; fill:#212121 }
+  .sub    { font-family:Arial,sans-serif; font-size:11px; fill:#546E7A }
+  .mono   { font-family:'Courier New',monospace; font-size:10px; fill:#6A1B9A }
+  .note   { font-family:Arial,sans-serif; font-size:10px; fill:#616161; font-style:italic }
+</style>
+
+<defs>
+  <marker id="arr" markerWidth="9" markerHeight="9" refX="8" refY="3" orient="auto">
+    <polygon points="0 0, 9 3, 0 6" fill="#455A64"/>
+  </marker>
+</defs>
+
+<!-- ── Title ────────────────────────────────────────────────────────────── -->
+<text x="340" y="24" text-anchor="middle" font-family="Arial,sans-serif"
+      font-size="16" font-weight="700" fill="#1A237E">Training Pipeline — tf.data + Callbacks</text>
+
+<!-- ══════════════ LEFT COLUMN: data pipeline ════════════════════════════ -->
+
+<!-- Step 1: Load -->
+<rect class="step" x="30" y="44" width="220" height="48" rx="6"/>
+<text x="140" y="63" text-anchor="middle" class="lbl">1 — Load from directory</text>
+<text x="140" y="80" text-anchor="middle" class="sub">image_dataset_from_directory</text>
+
+<!-- capture metadata note -->
+<rect class="warn" x="260" y="50" width="146" height="36" rx="4"/>
+<text x="333" y="64" text-anchor="middle" class="note">capture class_names</text>
+<text x="333" y="77" text-anchor="middle" class="note">+ file_paths HERE</text>
+<line stroke="#E65100" stroke-width="1" x1="260" y1="68" x2="250" y2="68"/>
+
+<line class="arrow" x1="140" y1="92" x2="140" y2="118"/>
+
+<!-- Step 2: Standardise -->
+<rect class="step" x="30" y="118" width="220" height="48" rx="6"/>
+<text x="140" y="137" text-anchor="middle" class="lbl">2 — ImageNet standardisation</text>
+<text x="140" y="153" text-anchor="middle" class="mono">μ,σ  (scratch models only)</text>
+
+<line class="arrow" x1="140" y1="166" x2="140" y2="192"/>
+
+<!-- Step 3: Cache -->
+<rect class="cache" x="30" y="192" width="220" height="48" rx="6"/>
+<text x="140" y="211" text-anchor="middle" class="lbl">3 — .cache()  in RAM</text>
+<text x="140" y="228" text-anchor="middle" class="sub">disk I/O eliminated after epoch 1</text>
+
+<!-- Why cache here note -->
+<rect class="warn" x="260" y="196" width="146" height="40" rx="4"/>
+<text x="333" y="211" text-anchor="middle" class="note">augment AFTER cache</text>
+<text x="333" y="223" text-anchor="middle" class="note">fresh random views</text>
+<text x="333" y="234" text-anchor="middle" class="note">every epoch</text>
+<line stroke="#E65100" stroke-width="1" x1="260" y1="216" x2="250" y2="216"/>
+
+<line class="arrow" x1="140" y1="240" x2="140" y2="266"/>
+
+<!-- Step 4: Augment -->
+<rect class="aug" x="30" y="266" width="220" height="66" rx="6"/>
+<text x="140" y="284" text-anchor="middle" class="lbl">4 — Spatial augmentation</text>
+<text x="140" y="300" text-anchor="middle" class="sub">Flip · Rotation · Zoom · Translation</text>
+<text x="140" y="315" text-anchor="middle" class="sub">Brightness · Contrast</text>
+
+<line class="arrow" x1="140" y1="332" x2="140" y2="358"/>
+
+<!-- Step 5: MixUp / CutMix -->
+<rect class="aug" x="30" y="358" width="220" height="48" rx="6"/>
+<text x="140" y="377" text-anchor="middle" class="lbl">5 — MixUp / CutMix (50/50)</text>
+<text x="140" y="393" text-anchor="middle" class="sub">α=0.4  ·  batch-level blending</text>
+
+<line class="arrow" x1="140" y1="406" x2="140" y2="432"/>
+
+<!-- Step 6: Prefetch -->
+<rect class="gpu" x="30" y="432" width="220" height="48" rx="6"/>
+<text x="140" y="451" text-anchor="middle" class="lbl">6 — .prefetch(AUTOTUNE)</text>
+<text x="140" y="468" text-anchor="middle" class="sub">CPU prepares n+1 while GPU runs n</text>
+
+<!-- ══════════════ RIGHT COLUMN: callbacks ════════════════════════════════ -->
+
+<text x="530" y="44" text-anchor="middle" font-family="Arial,sans-serif"
+      font-size="13" font-weight="700" fill="#1A237E">Training Callbacks</text>
+
+<rect class="cb" x="416" y="56" width="228" height="38" rx="5"/>
+<text x="530" y="72" text-anchor="middle" class="lbl">GlobalCheckpoint</text>
+<text x="530" y="87" text-anchor="middle" class="sub">beats all-time best across runs</text>
+
+<rect class="cb" x="416" y="104" width="228" height="38" rx="5"/>
+<text x="530" y="120" text-anchor="middle" class="lbl">EarlyStopping</text>
+<text x="530" y="135" text-anchor="middle" class="sub">patience + restore_best_weights</text>
+
+<rect class="cb" x="416" y="152" width="228" height="46" rx="5"/>
+<text x="530" y="168" text-anchor="middle" class="lbl">OneCycleScheduler</text>
+<text x="530" y="183" text-anchor="middle" class="sub">30% linear warmup</text>
+<text x="530" y="196" text-anchor="middle" class="sub">70% cosine annealing</text>
+
+<rect class="cb" x="416" y="208" width="228" height="38" rx="5"/>
+<text x="530" y="224" text-anchor="middle" class="lbl">ExperimentTracker</text>
+<text x="530" y="239" text-anchor="middle" class="sub">appends to experiment_logs.csv</text>
+
+<rect class="cb" x="416" y="256" width="228" height="38" rx="5"/>
+<text x="530" y="272" text-anchor="middle" class="lbl">DynamicHistoryLogger</text>
+<text x="530" y="287" text-anchor="middle" class="sub">per-epoch CSV + auto-plot</text>
+
+<rect class="cb" x="416" y="304" width="228" height="38" rx="5"/>
+<text x="530" y="320" text-anchor="middle" class="lbl">TensorBoard</text>
+<text x="530" y="335" text-anchor="middle" class="sub">live curves + weight histograms</text>
+
+<!-- ══════════════ BOTTOM: compile config ════════════════════════════════ -->
+<rect fill="#FAFAFA" stroke="#BDBDBD" stroke-width="1" x="30" y="502" width="614" height="46" rx="6"/>
+<text x="70" y="520" class="lbl">Compile:</text>
+<text x="165" y="520" class="sub">AdamW  (weight_decay=1e-4,  clipnorm=1.0)</text>
+<text x="450" y="520" class="sub">  +  CategoricalCrossentropy  (label_smoothing=0.1)</text>
+<text x="70" y="538" class="sub">global seed pinned: Python · NumPy · TensorFlow/Keras</text>
+<text x="420" y="538" class="sub">model saved as  {arch}_{regime}_best.keras</text>
+
+</svg>

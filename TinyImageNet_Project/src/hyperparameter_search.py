@@ -150,7 +150,9 @@ def objective(trial, model_type):
     # Load dataset
     # -----------------------------------------
 
-    train_ds, val_ds = get_datasets(cfg)
+    # get_datasets returns (train_ds, val_ds, class_names, val_file_paths).
+    # The hyperparameter search only needs the two dataset objects.
+    train_ds, val_ds, _class_names, _val_paths = get_datasets(cfg)
 
     # -----------------------------------------
     # Build model
