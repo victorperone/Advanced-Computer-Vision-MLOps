@@ -63,7 +63,9 @@ def fine_tune():
     # -------------------------------------------------------
     # Load datasets
     # -------------------------------------------------------
-    train_ds, val_ds = get_datasets(cfg)
+    # get_datasets returns 4 values: datasets + metadata captured before
+    # pipeline transformations strip class_names and file_paths attributes.
+    train_ds, val_ds, class_names, val_file_paths = get_datasets(cfg)
     
     # -------------------------------------------------------
     # Build model (pretrained=True loads ImageNet weights)
@@ -109,7 +111,7 @@ def fine_tune():
     phase1_callbacks = [
         keras.callbacks.EarlyStopping(
             monitor='val_accuracy',
-            patience=4,
+            patience=6,
             restore_best_weights=True,
             verbose=1
         ),
@@ -145,7 +147,7 @@ def fine_tune():
     
     # Unfreeze the last 30 layers of the backbone
     # 30 is a reasonable default — covers the final feature extraction blocks
-    set_backbone_trainable(model, trainable=True, num_layers_to_unfreeze=30)
+    set_backbone_trainable(model, trainable=True, num_layers_to_unfreeze=100)
     
     # CRITICAL: Recompile with a much lower LR (10x lower than Phase 1)
     # High LR here would destroy the pretrained features we're building on

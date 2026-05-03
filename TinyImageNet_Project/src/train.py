@@ -50,7 +50,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.utils import load_config  # noqa: E402 (must stay above TF import)
 
 # Change "laptop" → "desktop" when running on the RTX 3060.
-cfg = load_config(profile="laptop")
+cfg = load_config(profile="desktop")
 
 if not cfg["use_gpu"]:
     os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
@@ -205,8 +205,10 @@ def mixup(images, labels, alpha=0.4):
     # Create a randomly shuffled version of the batch to mix with
     indices = tf.random.shuffle(tf.range(batch_size))
 
+    # Cast lam to match image dtype (float16 under mixed precision)
+    lam = tf.cast(lam, images.dtype)
     mixed_images = lam * images + (1.0 - lam) * tf.gather(images, indices)
-    mixed_labels = lam * labels + (1.0 - lam) * tf.gather(labels, indices)
+    mixed_labels = tf.cast(lam, labels.dtype) * labels + (1.0 - tf.cast(lam, labels.dtype)) * tf.gather(labels, indices)
 
     return mixed_images, mixed_labels
 
@@ -283,6 +285,8 @@ def cutmix(images, labels, alpha=1.0):
     shuffled_images = tf.gather(images, indices)
 
     # Blend: original where mask=1, donor where mask=0
+    # Cast mask to image dtype so multiply works under mixed precision
+    mask = tf.cast(mask, images.dtype)
     mixed_images = images * mask + shuffled_images * (1.0 - mask)
 
     # Recalculate λ from actual box area (may differ from sampled λ due to clamping)
@@ -749,7 +753,7 @@ def train():
 
     All hyperparameters come from the active profile in ``config.yaml``.
     To switch profiles edit the load_config call near the top of this file:
-        cfg = load_config(profile="laptop")   # or "desktop"
+        cfg = load_config(profile="desktop")   # or "desktop"
     """
     # --- 1. Datasets ---
     # get_datasets now returns 4 values: the two pipeline datasets PLUS

@@ -65,7 +65,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.utils import load_config, set_global_seed  # noqa: E402
 
-cfg = load_config(profile="laptop")
+cfg = load_config(profile="desktop")
 
 if not cfg["use_gpu"]:
     os.environ["CUDA_VISIBLE_DEVICES"] = "-1"

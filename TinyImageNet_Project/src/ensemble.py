@@ -61,7 +61,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # Load config before TF to set CUDA_VISIBLE_DEVICES
 from src.utils import load_config, set_global_seed  # noqa: E402
 
-cfg = load_config(profile="laptop")  # Change to "desktop" on the big machine
+cfg = load_config(profile="desktop")  # Change to "desktop" on the big machine
 
 if not cfg["use_gpu"]:
     os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
