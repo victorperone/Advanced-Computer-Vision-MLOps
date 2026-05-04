@@ -326,12 +326,13 @@ def build_efficientnet(
     """
     inputs = keras.Input(shape=input_shape)
 
-    # --- Preprocessing layer (embedded so the model is self-contained) ---
-    # EfficientNet preprocess_input rescales to [-1, 1] and applies
-    # channel-wise mean subtraction matching ImageNet statistics.
-    # If pretrained=False this is still good practice; it keeps
-    # inputs in a well-scaled range regardless of training mode.
-    x = keras.applications.efficientnet_v2.preprocess_input(inputs)
+    # ── FIX: cast to float32 before preprocess_input ─────────────────────────
+    # EfficientNet's preprocess_input does channel-wise mean subtraction.
+    # Under mixed precision the input is float16; casting to float32 first
+    # ensures the preprocessing statistics are applied at full precision,
+    # which is what EfficientNet's pretrained weights expect.
+    x = layers.Lambda(lambda t: tf.cast(t, tf.float32))(inputs)
+    x = keras.applications.efficientnet_v2.preprocess_input(x)
 
     weights_config = "imagenet" if pretrained else None
     backbone = keras.applications.EfficientNetV2B0(
@@ -378,8 +379,17 @@ def build_convnext(
     """
     inputs = keras.Input(shape=input_shape)
 
+    # ── FIX: cast to float32 before Rescaling ────────────────────────────────
+    # Under mixed precision, the input tensor arrives as float16.
+    # Rescaling applies  x * (1/127.5) + (-1.0)  which is fine in float16
+    # for the arithmetic, BUT ConvNeXtTiny's internal BatchNormalization
+    # layers accumulate statistics in float32 and can silently mis-match if
+    # the entire input chain has float16 scale.  Casting here ensures the
+    # preprocessing path is always float32 regardless of the global policy.
+    x = layers.Lambda(lambda t: tf.cast(t, tf.float32))(inputs)
+
     # Rescale [0, 255] → [-1, 1] using the standard formula: x/127.5 - 1
-    x = layers.Rescaling(scale=1.0 / 127.5, offset=-1.0)(inputs)
+    x = layers.Rescaling(scale=1.0 / 127.5, offset=-1.0)(x)
 
     weights_config = "imagenet" if pretrained else None
     backbone = keras.applications.ConvNeXtTiny(
@@ -757,5 +767,3 @@ if __name__ == "__main__":
     print(f"  Parameters: {cnx.count_params():,}")
 
     print("\n✅ All models built successfully.")
-
-

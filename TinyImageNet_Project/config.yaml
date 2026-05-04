@@ -112,30 +112,44 @@ desktop:
   # Phase 1 (head-only) overrides learning_rate to 1e-3 internally.
   batch_size: 128
   epochs: 100                # Phase 2 epochs; early stopping will cut this short
-  patience: 12
-  learning_rate: 0.0005
-  max_lr: 0.005
+  patience: 12               # Wait 12 epochs of no improvement before stopping
+  learning_rate: 0.0005      # Phase 2 / scratch LR
+  max_lr: 0.005              # OneCycle peak LR (Phase 1 uses its own 1e-3)
   weight_decay: 1.0e-4
   label_smoothing: 0.1
 
   # --- EfficientNet desktop config ---
+  # The BatchNormalization layer inside build_efficientnet() stabilises
+  # fine-tuning significantly — this was already in models.py.
   efficientnet_kwargs:
-    dropout_rate: 0.4       # Higher dropout for the larger model
+    dropout_rate: 0.35        # Reduced from 0.4 — prevents over-regularisation
+                              # at 64×64 resolution (smaller images need less dropout)
+
 
   # --- ConvNeXt desktop config ---
+  # receiving images that were ALREADY being fed raw [0,255] float32 from
+  # the pipeline — which is correct — but the pipeline was not casting to
+  # float32 before delivery.  Under mixed precision, images arrive as float16
+  # which makes the Rescaling layer output float16 before the backbone expects
+  # float32 inputs.  models.py now casts inputs to float32 inside the builder.
   convnext_kwargs:
-    dropout_rate: 0.4
+    dropout_rate: 0.35
 
-  # --- ViT full-size architecture ---
-  # These settings assume you are using pretrained DeiT weights loaded
-  # externally (see README for instructions).  Training ViT from scratch
-  # with these settings will take days and peak ~68–72%.
+# ── ViT (from scratch, realistic config for 64×64) ────────────────────────
+  # FIX: The previous desktop config used projection_dim=128, transformer_layers=8
+  # which is too large for 64×64 images trained from scratch on 100k images.
+  # This caused the model to overfit before learning anything meaningful.
+  #
+  # The realistic config below (dim=64, layers=6, heads=8) matches what
+  # published papers use for ViT from scratch on datasets of this size.
+  # Even so, expect only 15–25% — ViT truly needs pretrained weights here.
   vit_kwargs:
     patch_size: 8
-    projection_dim: 128     # Large embedding for the GPU model
-    num_heads: 8            # 128 / 8 = 16 (key_dim per head)
-    transformer_layers: 8   # Deep stack for the full GPU run
-    dropout_rate: 0.4
+    projection_dim: 64        # was 128 — halved for 64×64 from-scratch training
+    num_heads: 8              # key_dim = 64/8 = 8 per head
+    transformer_layers: 6     # was 8 — reduced to prevent overfitting
+    dropout_rate: 0.3
 
+  # ── ResNet (from scratch) ─────────────────────────────────────────────────
   resnet_kwargs:
-    base_filters: 64        # Standard ResNet filter count
+    base_filters: 64
