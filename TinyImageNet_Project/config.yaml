@@ -102,8 +102,8 @@ desktop:
   #   STEP 4 — Ensemble: average the softmax outputs of your two best models.
   #             This alone typically adds +1–3 pp for free.
   # --------------------------------------------------------------------------
-  model_type: "resnet"
-  pretrained: false          # CRITICAL for 80%+ accuracy — loads ImageNet weights
+  model_type: "efficientnet"
+  pretrained: true          # CRITICAL for 80%+ accuracy — loads ImageNet weights
   use_gpu: true
   cache_dataset: true       # 32 GB RAM → can cache the full dataset easily
 
@@ -122,7 +122,7 @@ desktop:
   # The BatchNormalization layer inside build_efficientnet() stabilises
   # fine-tuning significantly — this was already in models.py.
   efficientnet_kwargs:
-    dropout_rate: 0.35        # Reduced from 0.4 — prevents over-regularisation
+    dropout_rate: 0.3        # Reduced from 0.4 — prevents over-regularisation
                               # at 64×64 resolution (smaller images need less dropout)
 
 
@@ -133,7 +133,7 @@ desktop:
   # which makes the Rescaling layer output float16 before the backbone expects
   # float32 inputs.  models.py now casts inputs to float32 inside the builder.
   convnext_kwargs:
-    dropout_rate: 0.35
+    dropout_rate: 0.25
 
 # ── ViT (from scratch, realistic config for 64×64) ────────────────────────
   # FIX: The previous desktop config used projection_dim=128, transformer_layers=8
