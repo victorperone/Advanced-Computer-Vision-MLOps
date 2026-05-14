@@ -1,75 +1,53 @@
-# config.yaml
+# config.yaml  —  v4
 # ===========================================================================
-# Configuration file for the Tiny ImageNet classification project.
+# Single source of truth for all hyperparameters.
 #
-# Structure:
-#   dataset:   shared paths and dimensions (same for all profiles)
-#   laptop:    CPU training — tiny models for fast debugging (Core i7 8th gen)
-#   desktop:   GPU training — full-size models (Core i7 12th gen + RTX 3060)
+# CRITICAL — val_dir must point to the organised subfolder:
+#   CORRECT:  "data/tiny-imagenet-200/val/images"   (200 class folders)
+#   WRONG:    "data/tiny-imagenet-200/val"           (1 flat folder)
 #
-# How to switch profiles in train.py:
-#   cfg = load_config(profile="laptop")   # or "desktop"
-#
-# How to switch models within a profile:
-#   Change model_type to one of: "vit", "resnet", "efficientnet", "convnext"
+# To switch models, change model_type in the desktop section:
+#   "efficientnet"  → best accuracy, use with fine_tune.py
+#   "convnext"      → strong alternative, use with fine_tune.py
+#   "resnet"        → from scratch baseline, use with train.py
+#   "vit"           → transformer baseline, use with train.py
 # ===========================================================================
 
 
-# ---------------------------------------------------------------------------
-# Shared dataset configuration — used by ALL profiles.
-# ---------------------------------------------------------------------------
 dataset:
   img_size: 64
   num_classes: 200
   train_dir: "data/tiny-imagenet-200/train"
   val_dir:   "data/tiny-imagenet-200/val/images"
-  # Global random seed — pinned here so it appears in every experiment log.
-  # Change this to verify your results are stable across seeds.
   seed: 42
 
 
 # ===========================================================================
-# LAPTOP PROFILE — CPU only, small models, 1–2 epochs for smoke testing
-# Core i7 8th gen, 16 GB DDR4, integrated GPU (disabled)
+# LAPTOP PROFILE  —  CPU only, smoke testing
 # ===========================================================================
 laptop:
-  # --------------------------------------------------------------------------
-  # Model selection.
-  # Best choices for the laptop (ranked by what you can actually learn from):
-  #   "resnet"  → Fastest to train from scratch.  Converges in ~5 epochs.
-  #               Use this to verify the pipeline works end-to-end.
-  #   "vit"     → Interesting to experiment with even on CPU.
-  #               The improved architecture in models.py fixes the key_dim
-  #               bug and adds stochastic depth — noticeable convergence
-  #               improvement even on 1–2 epochs.
-  #   "efficientnet" / "convnext" → Can run on CPU but very slow.
-  #               Only useful with pretrained=false and 1 epoch for sanity checks.
-  # --------------------------------------------------------------------------
   model_type: "resnet"
-  pretrained: false         # No pretrained weights for laptop (slow download + CPU)
+  pretrained: false
   use_gpu: false
-  cache_dataset: false      # Set true only if your laptop has 14+ GB free RAM
+  cache_dataset: false
 
-  # --- Training hyperparameters ---
   batch_size: 16
-  epochs: 1                 # Just enough to verify the pipeline
+  epochs: 1
   patience: 2
   learning_rate: 0.001
   max_lr: 0.003
   weight_decay: 1.0e-4
   label_smoothing: 0.1
 
-  # --- ViT micro architecture (64×64 image with patch_size=8 → 64 patches) ---
-  # These are intentionally tiny so 1 epoch finishes in a few minutes on CPU.
   vit_kwargs:
     patch_size: 8
-    projection_dim: 32      # Tiny embedding — just enough to learn something
-    num_heads: 4             # Must divide projection_dim: 32 / 4 = 8 (key_dim)
-    transformer_layers: 2   # Very shallow; deeper = slower on CPU
+    projection_dim: 32
+    num_heads: 4
+    transformer_layers: 2
     dropout_rate: 0.2
 
   resnet_kwargs:
-    base_filters: 32        # Half the desktop filter count
+    base_filters: 32
 
   efficientnet_kwargs:
     dropout_rate: 0.2
@@ -79,77 +57,62 @@ laptop:
 
 
 # ===========================================================================
-# DESKTOP PROFILE — RTX 3060 12 GB VRAM, full-size models
-# Core i7 12th gen, 32 GB DDR5
+# DESKTOP PROFILE  —  RTX 3060 12 GB VRAM
+#
+# RECOMMENDED RUN ORDER (three-phase fine_tune.py):
+#
+#   Step 1: EfficientNet pretrained  →  python -m src.fine_tune
+#           Set: model_type: "efficientnet", pretrained: true
+#           Expected: 72–82% val_accuracy
+#
+#   Step 2: ConvNeXt pretrained      →  python -m src.fine_tune
+#           Set: model_type: "convnext", pretrained: true
+#           Expected: 68–78% val_accuracy
+#
+#   Step 3: Ensemble                 →  python -m src.ensemble --tta
+#           Expected: +2–5 pp above best single model
+#
+# SCRATCH MODELS (train.py):
+#   ResNet:  Set model_type: "resnet",  pretrained: false
+#   ViT:     Set model_type: "vit",     pretrained: false
 # ===========================================================================
 desktop:
-  # --------------------------------------------------------------------------
-  # Recommended training order for best accuracy:
-  #
-  #   STEP 1 — Run fine_tune.py with "efficientnet" + pretrained: true
-  #             Expected accuracy: 82–87%
-  #             EfficientNetV2B0 has the best speed/accuracy trade-off on
-  #             your hardware and is the go-to choice for transfer learning.
-  #
-  #   STEP 2 — Try "convnext" + pretrained: true
-  #             Expected accuracy: 81–86%  (sometimes 1–2 pp better than EfficientNet
-  #             with a larger epoch budget)
-  #
-  #   STEP 3 — Try "vit" — but use fine_tune.py and a DeiT pretrained checkpoint.
-  #             ViT from scratch on 100k images peaks ~68–72% even with all
-  #             improvements in models.py.
-  #
-  #   STEP 4 — Ensemble: average the softmax outputs of your two best models.
-  #             This alone typically adds +1–3 pp for free.
-  # --------------------------------------------------------------------------
   model_type: "efficientnet"
-  pretrained: true          # CRITICAL for 80%+ accuracy — loads ImageNet weights
+  pretrained: true
   use_gpu: true
-  cache_dataset: true       # 32 GB RAM → can cache the full dataset easily
+  cache_dataset: true       # 32 GB DDR5 → safe to cache all 100k images
 
-  # --- Training hyperparameters ---
-  # These are for fine_tune.py Phase 2 (fine-tuning).
-  # Phase 1 (head-only) overrides learning_rate to 1e-3 internally.
   batch_size: 128
-  epochs: 100                # Phase 2 epochs; early stopping will cut this short
-  patience: 12               # Wait 12 epochs of no improvement before stopping
-  learning_rate: 0.0005      # Phase 2 / scratch LR
-  max_lr: 0.005              # OneCycle peak LR (Phase 1 uses its own 1e-3)
+  epochs: 80                # Phase 3 budget — EarlyStopping cuts this short
+  patience: 15              # Generous: wait 15 epochs before stopping
+  learning_rate: 0.0005     # Used by train.py (not fine_tune.py)
+  max_lr: 0.005             # OneCycle peak for Phase 1
   weight_decay: 1.0e-4
   label_smoothing: 0.1
 
-  # --- EfficientNet desktop config ---
-  # The BatchNormalization layer inside build_efficientnet() stabilises
-  # fine-tuning significantly — this was already in models.py.
+  # EfficientNet:
+  #   dropout_rate: 0.3 chosen for 64×64 resolution.
+  #   At this resolution spatial features are already compressed;
+  #   high dropout (0.4) over-regularises and hurts convergence.
   efficientnet_kwargs:
-    dropout_rate: 0.3        # Reduced from 0.4 — prevents over-regularisation
-                              # at 64×64 resolution (smaller images need less dropout)
+    dropout_rate: 0.3
 
-
-  # --- ConvNeXt desktop config ---
-  # receiving images that were ALREADY being fed raw [0,255] float32 from
-  # the pipeline — which is correct — but the pipeline was not casting to
-  # float32 before delivery.  Under mixed precision, images arrive as float16
-  # which makes the Rescaling layer output float16 before the backbone expects
-  # float32 inputs.  models.py now casts inputs to float32 inside the builder.
+  # ConvNeXt:
+  #   ConvNeXt's depthwise-conv architecture has implicit regularisation
+  #   (similar effect to Dropout), so less explicit dropout is needed.
   convnext_kwargs:
     dropout_rate: 0.25
 
-# ── ViT (from scratch, realistic config for 64×64) ────────────────────────
-  # FIX: The previous desktop config used projection_dim=128, transformer_layers=8
-  # which is too large for 64×64 images trained from scratch on 100k images.
-  # This caused the model to overfit before learning anything meaningful.
-  #
-  # The realistic config below (dim=64, layers=6, heads=8) matches what
-  # published papers use for ViT from scratch on datasets of this size.
-  # Even so, expect only 15–25% — ViT truly needs pretrained weights here.
+  # ViT from scratch — realistic config for 64×64 images on 100k samples.
+  # projection_dim=64, layers=6 matches published results for this dataset size.
+  # Expect 15–28% — ViT requires pretrained weights for competitive accuracy.
   vit_kwargs:
     patch_size: 8
-    projection_dim: 64        # was 128 — halved for 64×64 from-scratch training
-    num_heads: 8              # key_dim = 64/8 = 8 per head
-    transformer_layers: 6     # was 8 — reduced to prevent overfitting
+    projection_dim: 64
+    num_heads: 8              # key_dim = 64/8 = 8 per head (correct)
+    transformer_layers: 6
     dropout_rate: 0.3
 
-  # ── ResNet (from scratch) ─────────────────────────────────────────────────
+  # ResNet-SE with 6 stages.
   resnet_kwargs:
     base_filters: 64
