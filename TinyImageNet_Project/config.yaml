@@ -1,21 +1,14 @@
-# config.yaml  —  v4
+# config.yaml  —  v5
 # ===========================================================================
-# Single source of truth for all hyperparameters.
+# KEY CHANGE from v4: images are upscaled to 224×224 inside the pipeline.
+# batch_size reduced from 128 → 64 because 224×224 images use 12× more VRAM
+# than 64×64.  RTX 3060 12GB handles batch_size=64 at 224×224 comfortably.
 #
-# CRITICAL — val_dir must point to the organised subfolder:
-#   CORRECT:  "data/tiny-imagenet-200/val/images"   (200 class folders)
-#   WRONG:    "data/tiny-imagenet-200/val"           (1 flat folder)
-#
-# To switch models, change model_type in the desktop section:
-#   "efficientnet"  → best accuracy, use with fine_tune.py
-#   "convnext"      → strong alternative, use with fine_tune.py
-#   "resnet"        → from scratch baseline, use with train.py
-#   "vit"           → transformer baseline, use with train.py
+# val_dir MUST point to the organised subfolder (200 class folders).
 # ===========================================================================
-
 
 dataset:
-  img_size: 64
+  img_size: 64                               # Native Tiny ImageNet resolution
   num_classes: 200
   train_dir: "data/tiny-imagenet-200/train"
   val_dir:   "data/tiny-imagenet-200/val/images"
@@ -23,14 +16,13 @@ dataset:
 
 
 # ===========================================================================
-# LAPTOP PROFILE  —  CPU only, smoke testing
+# LAPTOP PROFILE — CPU, 1 epoch smoke test only
 # ===========================================================================
 laptop:
   model_type: "resnet"
   pretrained: false
   use_gpu: false
   cache_dataset: false
-
   batch_size: 16
   epochs: 1
   patience: 2
@@ -38,81 +30,76 @@ laptop:
   max_lr: 0.003
   weight_decay: 1.0e-4
   label_smoothing: 0.1
-
   vit_kwargs:
     patch_size: 8
     projection_dim: 32
     num_heads: 4
     transformer_layers: 2
     dropout_rate: 0.2
-
   resnet_kwargs:
     base_filters: 32
-
   efficientnet_kwargs:
     dropout_rate: 0.2
-
   convnext_kwargs:
     dropout_rate: 0.2
 
 
 # ===========================================================================
-# DESKTOP PROFILE  —  RTX 3060 12 GB VRAM
+# DESKTOP PROFILE — RTX 3060 12 GB, Core i7 12th gen, 32 GB DDR5
 #
-# RECOMMENDED RUN ORDER (three-phase fine_tune.py):
+# HOW TO RUN:
+# ──────────────────────────────────────────────────────────────────────────
+# 1. EfficientNet (best accuracy/speed):
+#    model_type: "efficientnet", pretrained: true
+#    python -m src.fine_tune
+#    Expected: Phase1=62–72%  Phase2a=72–80%  Phase2b=75–83%
 #
-#   Step 1: EfficientNet pretrained  →  python -m src.fine_tune
-#           Set: model_type: "efficientnet", pretrained: true
-#           Expected: 72–82% val_accuracy
+# 2. ConvNeXt:
+#    model_type: "convnext", pretrained: true
+#    python -m src.fine_tune
+#    Expected: Phase1=58–68%  Phase2a=68–76%  Phase2b=72–80%
 #
-#   Step 2: ConvNeXt pretrained      →  python -m src.fine_tune
-#           Set: model_type: "convnext", pretrained: true
-#           Expected: 68–78% val_accuracy
+# 3. ResNet from scratch (train.py, not fine_tune.py):
+#    model_type: "resnet", pretrained: false
+#    python -m src.train
+#    Expected: 55–65%  (SE-ResNet, full 200-epoch budget)
 #
-#   Step 3: Ensemble                 →  python -m src.ensemble --tta
-#           Expected: +2–5 pp above best single model
+# 4. Ensemble all trained models:
+#    python -m src.ensemble --tta
+#    Expected: +2–5 pp over best single model
 #
-# SCRATCH MODELS (train.py):
-#   ResNet:  Set model_type: "resnet",  pretrained: false
-#   ViT:     Set model_type: "vit",     pretrained: false
+# WHY batch_size=64 (was 128):
+#    224×224×3 images use 12.25× more VRAM than 64×64×3.
+#    batch_size=128 at 224×224 requires ~10 GB VRAM activation memory.
+#    batch_size=64 fits comfortably in 12 GB with headroom for gradients.
 # ===========================================================================
 desktop:
   model_type: "efficientnet"
   pretrained: true
   use_gpu: true
-  cache_dataset: true       # 32 GB DDR5 → safe to cache all 100k images
+  cache_dataset: true       # 32 GB RAM — cache 224×224 images (~18 GB needed)
 
-  batch_size: 128
-  epochs: 80                # Phase 3 budget — EarlyStopping cuts this short
-  patience: 15              # Generous: wait 15 epochs before stopping
-  learning_rate: 0.0005     # Used by train.py (not fine_tune.py)
-  max_lr: 0.005             # OneCycle peak for Phase 1
+  # ── Training budget ───────────────────────────────────────────────────────
+  batch_size: 64            # REDUCED from 128 — 224×224 images need more VRAM
+  epochs: 80                # Phase 2b budget (early stopping cuts this short)
+  patience: 15              # EarlyStopping patience — more generous at 224×224
+  learning_rate: 0.0005
+  max_lr: 0.005
   weight_decay: 1.0e-4
   label_smoothing: 0.1
 
-  # EfficientNet:
-  #   dropout_rate: 0.3 chosen for 64×64 resolution.
-  #   At this resolution spatial features are already compressed;
-  #   high dropout (0.4) over-regularises and hurts convergence.
   efficientnet_kwargs:
-    dropout_rate: 0.3
+    dropout_rate: 0.3       # 224×224 gives richer features; 0.3 prevents overfit
 
-  # ConvNeXt:
-  #   ConvNeXt's depthwise-conv architecture has implicit regularisation
-  #   (similar effect to Dropout), so less explicit dropout is needed.
   convnext_kwargs:
     dropout_rate: 0.25
 
-  # ViT from scratch — realistic config for 64×64 images on 100k samples.
-  # projection_dim=64, layers=6 matches published results for this dataset size.
-  # Expect 15–28% — ViT requires pretrained weights for competitive accuracy.
   vit_kwargs:
     patch_size: 8
     projection_dim: 64
-    num_heads: 8              # key_dim = 64/8 = 8 per head (correct)
+    num_heads: 8
     transformer_layers: 6
     dropout_rate: 0.3
 
-  # ResNet-SE with 6 stages.
   resnet_kwargs:
     base_filters: 64
