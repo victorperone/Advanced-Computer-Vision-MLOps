@@ -77,7 +77,7 @@ desktop:
   model_type: "efficientnet"
   pretrained: true
   use_gpu: true
-  cache_dataset: true       # 32 GB RAM — cache 224×224 images (~18 GB needed)
+  cache_dataset: false       # 32 GB RAM — cache 224×224 images (~18 GB needed)
 
   # ── Training budget ───────────────────────────────────────────────────────
   batch_size: 64            # REDUCED from 128 — 224×224 images need more VRAM
